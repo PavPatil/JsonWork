@@ -15,12 +15,23 @@ public class openapi {
 	public static HashMap<tags_info, ArrayList<String>> map = new HashMap<>();
 	public static HashMap<String, String> mapDesc = new HashMap<>();
 	public static HashMap<String, ArrayList<String>> mapMethod = new HashMap<>();
+	public static HashMap<String, ArrayList<Helper>> mapMaster = new HashMap<>();
+
 	public static void main(String[] args) {
-		test();
+		fillTags();
 		System.out.println("Hi");
-		getPaths();
-		System.out.println(mapMethod);
-		System.out.println(mapDesc);
+		getPathsData();
+		// System.out.println(mapMethod);
+		System.out.println(mapMaster);
+		for (Map.Entry<String, ArrayList<Helper>> entry : mapMaster.entrySet()) {
+			ArrayList<Helper> t = entry.getValue();
+
+			System.out.println("Key = " + entry.getKey());
+			for (Helper h : t) {
+				System.out.println(h.getMethod() + " = " + h.getPath());
+			}
+			System.out.println("==================================");
+		}
 	}
 
 	public static JSONObject getJsonObject() {
@@ -39,7 +50,7 @@ public class openapi {
 		return jsonObject;
 	}
 
-	public static void test() {
+	public static void fillTags() {
 		try {
 			/*
 			 * String loc = new
@@ -69,23 +80,26 @@ public class openapi {
 				tags_info t = new tags_info();
 				t.setTagName(tagName);
 				t.setTagDesc(tagDesc);
-				map.put(t, new ArrayList<String>());
+				// map.put(t, new ArrayList<String>());
 				mapDesc.put(tagName, tagDesc);
-				mapMethod.put(tagName,new ArrayList<String>());
+				// mapMethod.put(tagName,new ArrayList<String>());
+				ArrayList<Helper> h = new ArrayList<>();
+				mapMaster.put(tagName, h);
 			}
 
 		} catch (JSONException e) {
 			System.out.print(e);
 		}
-
-		System.out.print(mapMethod.size());
 	}
-	public static boolean isMethod(String key){
-		if(key.equals("get") || key.equals("post") || key.equals("delete") || key.equals("patch") || key.equals("update"))
+
+	public static boolean isMethod(String key) {
+		if (key.equals("get") || key.equals("post") || key.equals("delete") || key.equals("patch")
+				|| key.equals("update"))
 			return true;
 		return false;
 	}
-	public static void getPaths() {
+
+	public static void getPathsData() {
 		try {
 
 			JSONObject jsonObject = getJsonObject();
@@ -101,19 +115,23 @@ public class openapi {
 					JSONObject singlePathObject = pathObject.getJSONObject(key);
 					Iterator<String> singlepathkeys = singlePathObject.keys();
 					ArrayList<String> arr = new ArrayList<>();
-					
+
 					while (singlepathkeys.hasNext()) {
 						String ckey = singlepathkeys.next();
 						if (singlePathObject.has(ckey)) {
-							if(isMethod(ckey)){
+							if (isMethod(ckey)) {
 								JSONArray methodArray = singlePathObject.getJSONObject(ckey).getJSONArray("tags");
 								String tagName = methodArray.getString(0);
-								
-								if(mapMethod.containsKey(tagName)){
+
+								if (mapMethod.containsKey(tagName)) {
+									Helper h = new Helper();
+									h.setPath(key);
+									h.setMethod(ckey);
 									mapMethod.get(tagName).add(key);
+									mapMaster.get(tagName).add(h);
 								}
-								//map.containsKey(ckey)
-								//mapMethod.containsKey()
+								// map.containsKey(ckey)
+								// mapMethod.containsKey()
 							}
 						}
 					}
