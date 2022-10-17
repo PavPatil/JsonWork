@@ -30,17 +30,25 @@ public class xmldesigner {
 		fillTags();
 		System.out.println("Hi");
 		getPathsData();
-		System.out.println(mapMaster);
-		/*for (Map.Entry<String, ArrayList<xmlHelper>> entry : mapMaster.entrySet()) {
+		//System.out.println(mapMaster);
+		for (Map.Entry<String, ArrayList<xmlHelper>> entry : mapMaster.entrySet()) {
 			ArrayList<xmlHelper> t = entry.getValue();
 
 			System.out.println("Key = " + entry.getKey());
 			for (xmlHelper h : t) {
-				System.out.println(h.getMethod() + "="+ h.getPath() + "=" +h.getParameters().toString()+"="+h.getResponse().toString());
-				
+				System.out.println(h.getMethod() + "="+ h.getPath());
+				ArrayList<parameter> params = h.getParameters();
+				for(parameter p : params){
+					System.out.print(p.getName()+"***"+p.getType()+"***"+p.getReadOnly()+"=="+p.getRequired());
+					System.out.println("-------------------------------------------------------------");
+				}
+				ArrayList<String> res = h.getResponse();
+				for(String re : res){
+					System.out.print(re+"->");
+				}
 			}
 			System.out.println("==================================");
-		}*/
+		}
 		
 		// System.out.println(mapMethod);
 		/*System.out.println(mapMaster);
