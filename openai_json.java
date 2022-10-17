@@ -13,10 +13,14 @@ import org.json.JSONObject;
 
 public class openapi {
 	public static HashMap<tags_info, ArrayList<String>> map = new HashMap<>();
-
+	public static HashMap<String, String> mapDesc = new HashMap<>();
+	public static HashMap<String, ArrayList<String>> mapMethod = new HashMap<>();
 	public static void main(String[] args) {
-		//test();
+		test();
+		System.out.println("Hi");
 		getPaths();
+		System.out.println(mapMethod);
+		System.out.println(mapDesc);
 	}
 
 	public static JSONObject getJsonObject() {
@@ -66,78 +70,63 @@ public class openapi {
 				t.setTagName(tagName);
 				t.setTagDesc(tagDesc);
 				map.put(t, new ArrayList<String>());
+				mapDesc.put(tagName, tagDesc);
+				mapMethod.put(tagName,new ArrayList<String>());
 			}
 
 		} catch (JSONException e) {
 			System.out.print(e);
 		}
 
-		System.out.print(map.size());
+		System.out.print(mapMethod.size());
 	}
-
+	public static boolean isMethod(String key){
+		if(key.equals("get") || key.equals("post") || key.equals("delete") || key.equals("patch") || key.equals("update"))
+			return true;
+		return false;
+	}
 	public static void getPaths() {
 		try {
+
 			JSONObject jsonObject = getJsonObject();
+			// if (jsonObject.has(key)) {
 			JSONObject pathObject = jsonObject.getJSONObject("paths");
-			Iterator<String> keys = pathObject.keys();
-			int cnt=0;
-			while(keys.hasNext()) {
-				JSONObject methodObject = null;
-				String key = keys.next();
-				JSONObject currentObject = pathObject.getJSONObject(key);
-				Iterator<String> ckeys = currentObject.keys();
-				
-				while(ckeys.hasNext()) {
-					String keyr = ckeys.next();
-					//System.out.println(keyr);
+			Iterator<String> pathkeys = pathObject.keys();
+
+			int cnt = 0;
+			while (pathkeys.hasNext()) {
+				String key = pathkeys.next();
+
+				if (pathObject.has(key)) {
+					JSONObject singlePathObject = pathObject.getJSONObject(key);
+					Iterator<String> singlepathkeys = singlePathObject.keys();
+					ArrayList<String> arr = new ArrayList<>();
 					
-				}cnt++;
-				
-				
-				/*JSONObject childObject = currentObject.getJSONObject(key);
-				Iterator<String> ckeys = childObject.keys();
-				int cnt = 0;
-				String fkey = "";
-				while(ckeys.hasNext()) {
-					String ckey = ckeys.next();
-					if(ckey!="servers"){
-						cnt++;
-						fkey = ckey;
-						break;
+					while (singlepathkeys.hasNext()) {
+						String ckey = singlepathkeys.next();
+						if (singlePathObject.has(ckey)) {
+							if(isMethod(ckey)){
+								JSONArray methodArray = singlePathObject.getJSONObject(ckey).getJSONArray("tags");
+								String tagName = methodArray.getString(0);
+								
+								if(mapMethod.containsKey(tagName)){
+									mapMethod.get(tagName).add(key);
+								}
+								//map.containsKey(ckey)
+								//mapMethod.containsKey()
+							}
+						}
 					}
-				}*/
-				//methodObject = pathObject.getJSONObject(fkey);
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				/*if (childObject.has("get"))
-				
-				else if((childObject.has("post")))
-				methodObject = pathObject.getJSONObject(key);
-				else if((childObject.has("patch")))
-				methodObject = pathObject.getJSONObject(key);
-				else if((childObject.has("patch")))
-				methodObject = pathObject.getJSONObject(key);
-				else if((childObject.has("update")))
-				methodObject = pathObject.getJSONObject(key);
-				else if((childObject.has("delete")))
-				methodObject = pathObject.getJSONObject(key);
-			    System.out.print(key);*/
-			   
+				}
+				cnt++;
+
 			}
-			
+			// System.out.println(pathObject);
+
 			System.out.println(cnt);
-			JSONArray Tags = (JSONArray) jsonObject.get("tags");
-		} catch (Exception e) {
+			// JSONArray Tags = (JSONArray) jsonObject.get("tags");
+		} catch (JSONException e) {
 			System.out.print(e);
 		}
 	}
-
 }
