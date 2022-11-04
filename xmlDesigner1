@@ -1,0 +1,290 @@
+package com.tibco.bw.sharedresource.oerpconnection.design.section;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.tibco.bw.sharedresource.oerpconnection.design.IOERPConnectionConstants;
+import com.tibco.bw.sharedresource.oerpconnection.design.service.Parameter;
+import com.tibco.bw.sharedresource.oerpconnection.design.service.Request;
+import com.tibco.bw.sharedresource.oerpconnection.design.service.Response;
+//import com.tibco.bw.sharedresource.oerpconnection.design.service.Request;
+import com.tibco.bw.sharedresource.oerpconnection.design.service.XMLHelper;
+import com.tibco.bw.sharedresource.oerpconnection.design.util.OERPAPIUtil;
+
+public class XMLDesigner implements IOERPConnectionConstants {
+	public HashMap<String, String> mapDesc = new HashMap<>();
+	public HashMap<String, ArrayList<String>> mapMethod = new HashMap<>();
+	public HashMap<String, ArrayList<XMLHelper>> mapMaster = new HashMap<>();
+	public JSONObject parent = null;
+
+	public void setParent(JSONObject obj) {
+		parent = obj;
+	}
+
+	public JSONObject setJsonObject() {
+		JSONObject jsonObject = null;
+		try {
+			String fileName = OERPAPIUtil.filename;
+			String loc = new String(OERPHOME + fileName);
+			File file = new File(loc);
+			// file.getAbsolutePath();
+			String content = new String(Files.readAllBytes(Paths.get(file.toURI())));
+			jsonObject = new JSONObject(content);
+		} catch (JSONException e) {
+			System.out.print(e);
+		} catch (IOException e) {
+			System.out.print(e);
+		}
+		parent = jsonObject;
+		return jsonObject;
+	}
+
+	public void fillTags() {
+		try {
+			JSONObject jsonObject = parent;
+			JSONArray Tags = (JSONArray) jsonObject.get(TAGS);
+			for (int i = 0; i < Tags.length(); i++) {
+				JSONObject objectInArray = Tags.getJSONObject(i);
+				String tagDesc = BLANK;
+				String tagName = BLANK;
+				if (objectInArray.has(NAME))
+					tagName = objectInArray.getString(NAME);
+				if (objectInArray.has(DESCRIPTION))
+					tagDesc = objectInArray.getString(DESCRIPTION);
+				mapDesc.put(tagName, tagDesc);
+				ArrayList<XMLHelper> h = new ArrayList<>();
+				mapMaster.put(tagName, h);
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+	}
+
+	public boolean isMethod(String key) {
+		if (key.equals(HTTP_METHOD_KEY_GET) || key.equals(HTTP_METHOD_KEY_POST) || key.equals(HTTP_METHOD_KEY_DELETE)
+				|| key.equals(HTTP_METHOD_KEY_PATCH) || key.equals(HTTP_METHOD_KEY_PUT))
+			return true;
+		return false;
+	}
+
+	public boolean isRequestBody(String key) {
+		if (key.equals(REQUEST_BODY))
+			return true;
+		return false;
+	}
+
+	public boolean isResponseBody(String key) {
+		if (key.equals(JSON_RESPONSES))
+			return true;
+		return false;
+	}
+
+	public boolean isParameter(String key) {
+		if (key.equals(JSON_PARAMETERS))
+			return true;
+		return false;
+	}
+
+	public ArrayList<Parameter> extractParameters(JSONArray parameterArray) {
+		ArrayList<Parameter> arr = new ArrayList<>();
+		for (int i = 0; i < parameterArray.length(); i++) {
+			try {
+				JSONObject parameter = parameterArray.getJSONObject(i);
+				String type = parameter.getString("in");
+				if (type.equals("path")) {
+					Parameter p = new Parameter();
+					if (parameter.has(NAME))
+						p.setName(parameter.getString(NAME));
+					if (parameter.has(REQUIRED))
+						p.setRequired(parameter.getBoolean(REQUIRED));
+					if (parameter.has(SCHEMA)) {
+						JSONObject fields = parameter.getJSONObject(SCHEMA);
+						if (fields.has(TYPE))
+							p.setType(fields.getString(TYPE));
+						if (fields.has(READONLY))
+							p.setReadOnly(fields.getBoolean(READONLY));
+					}
+					arr.add(p);
+				}
+			} catch (JSONException e) {
+				System.out.print(e);
+			}
+		}
+		return arr;
+	}
+
+	public ArrayList<Request> extractRequest(JSONObject reqObj) {
+		ArrayList<Request> arr = new ArrayList<>();
+		try {
+			if (reqObj.has("$ref")) {
+				String url = reqObj.getString("$ref");
+				int idx = url.lastIndexOf("/");
+				String reqKey = url.substring(idx + 1);
+
+				JSONObject jsonObject = parent;
+				JSONObject requestBody = null;
+
+				if (parent.getJSONObject("components").getJSONObject("schemas").getJSONObject(reqKey)
+						.has("properties")) {
+					requestBody = parent.getJSONObject("components").getJSONObject("schemas").getJSONObject(reqKey)
+							.getJSONObject("properties");
+
+					Iterator<String> reqkeys = requestBody.keys();
+
+					while (reqkeys.hasNext()) {
+						String key = reqkeys.next();
+						JSONObject req = requestBody.getJSONObject(key);
+
+						Request r = new Request();
+
+						r.setName(key);
+
+						if (req.has("type")) {
+							r.setType(req.getString("type"));
+						}
+						if (req.has("nullable")) {
+							r.setNullable(req.getBoolean("nullable"));
+						}
+
+						arr.add(r);
+					}
+
+				}
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+
+		return arr;
+	}
+
+	@SuppressWarnings("unchecked")
+	public ArrayList<Response> extractResponse(JSONObject obj) {
+		ArrayList<Response> response = new ArrayList<>();
+		try {
+			JSONObject contentObj = null;
+			String schemaPath = BLANK;
+			if (obj.has(JSON_RESPONSES)) {
+				contentObj = obj.getJSONObject(JSON_RESPONSES);
+				if (contentObj.has(JSON_DEFAULT)) {
+					contentObj = contentObj.getJSONObject(JSON_DEFAULT);
+					if (contentObj.has(JSON_CONTENT)) {
+						contentObj = contentObj.getJSONObject(JSON_CONTENT);
+						if (contentObj.has(APPLICATION_JSON)) {
+							contentObj = contentObj.getJSONObject(APPLICATION_JSON);
+							if (contentObj.has(SCHEMA)) {
+								contentObj = contentObj.getJSONObject(SCHEMA);
+								if (contentObj.has(DOLLAR + REF))
+									schemaPath = contentObj.getString(DOLLAR + REF);
+							}
+						}
+					}
+				}
+			}
+			int idx = schemaPath.lastIndexOf(FORWARD_SLASH);
+			schemaPath = schemaPath.substring(idx + 1, schemaPath.length());
+			JSONObject componentObj = null;
+			JSONObject schemaObj = null;
+			JSONObject propObj = null;
+			JSONObject props = null;
+			if (parent.has(JSON_COMPONENTS)) {
+				componentObj = parent.getJSONObject(JSON_COMPONENTS);
+				if (componentObj.has(JSON_SCHEMAS)) {
+					schemaObj = componentObj.getJSONObject(JSON_SCHEMAS);
+					if (schemaObj.has(schemaPath)) {
+						propObj = schemaObj.getJSONObject(schemaPath);
+						Iterator<String> itr = propObj.keys();
+						while (itr.hasNext()) {
+							String key = itr.next();
+							if (key.equals(JSON_PROPERTIES)) {
+								props = propObj.getJSONObject(key);
+								Iterator<String> citr = props.keys();
+								while (citr.hasNext()) {
+									String ckey = citr.next();
+									Response res = new Response();
+									res.setName(ckey);
+									JSONObject propsType = props.getJSONObject(ckey);
+									if(propsType.has("type")){
+										String type = propsType.getString("type");
+										res.setType(type);
+									}
+									response.add(res);
+								}
+							}
+						}
+					}
+				}
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+		return response;
+	}
+
+	@SuppressWarnings("unchecked")
+	public HashMap<String, ArrayList<XMLHelper>> getPathsData() {
+		try {
+			JSONObject jsonObject = parent;
+			JSONObject pathObject = jsonObject.getJSONObject(JSON_PATHS);
+			Iterator<String> pathkeys = pathObject.keys();
+			while (pathkeys.hasNext()) {
+				String key = pathkeys.next();
+				ArrayList<XMLHelper> a = new ArrayList<>();
+				if (pathObject.has(key)) {
+					JSONObject singlePathObject = pathObject.getJSONObject(key);
+					Iterator<String> singlepathkeys = singlePathObject.keys();
+					ArrayList<String> arr = new ArrayList<>();
+					while (singlepathkeys.hasNext()) {
+						String ckey = singlepathkeys.next();
+						if (singlePathObject.has(ckey)) {
+							if (isMethod(ckey)) {
+								JSONArray methodArray = singlePathObject.getJSONObject(ckey).getJSONArray(TAGS);
+								String tagName = methodArray.getString(0);
+								XMLHelper xml = new XMLHelper();
+								xml.setPath(key);
+								xml.setMethod(ckey);
+								if (singlePathObject.getJSONObject(ckey).has(JSON_PARAMETERS)) {
+									JSONArray parameterArray = singlePathObject.getJSONObject(ckey)
+											.getJSONArray(JSON_PARAMETERS);
+									ArrayList<Parameter> pm = extractParameters(parameterArray);
+									xml.setParameters(pm);
+								}
+								if (singlePathObject.getJSONObject(ckey).has("requestBody")) {
+									System.out.print(ckey + " ");
+
+									JSONObject requestBody = singlePathObject.getJSONObject(ckey)
+											.getJSONObject("requestBody");
+									ArrayList<Request> rb = new ArrayList<>();
+									rb = extractRequest(requestBody);
+									xml.setRequest(rb);
+								}
+								if (singlePathObject.getJSONObject(ckey).has(JSON_RESPONSES)) {
+									JSONObject parameterArray = singlePathObject.getJSONObject(ckey)
+											.getJSONObject(JSON_RESPONSES);
+									ArrayList<Response> res = extractResponse(singlePathObject.getJSONObject(ckey));
+									xml.setResponse(res);
+								}
+								if (mapMaster.containsKey(tagName)) {
+									mapMaster.get(tagName).add(xml);
+								}
+							}
+						}
+					}
+				}
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+		return mapMaster;
+	}
+}
