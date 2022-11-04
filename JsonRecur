@@ -1,0 +1,630 @@
+package json_modify;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+public class xmldesigner {
+
+	public static HashMap<tags_info, ArrayList<String>> map = new HashMap<>();
+	public static HashMap<String, String> mapDesc = new HashMap<>();
+	public static HashMap<String, ArrayList<String>> mapMethod = new HashMap<>();
+	public static HashMap<String, ArrayList<xmlHelper>> mapMaster = new HashMap<>();
+	// public static HashMap<String, ArrayList<xmlHelper>> mapMaster = new
+	// HashMap<>();
+	public static JSONObject parent = null;
+	String key = "Expense Reports/Expenses";
+
+	public void setParent(JSONObject obj) {
+		parent = obj;
+	}
+
+	public static ArrayList<request> extractRequest(JSONObject reqObj) {
+		ArrayList<request> arr = new ArrayList<>();
+		try {
+			if (reqObj.has("$ref")) {
+				String url = reqObj.getString("$ref");
+				int idx = url.lastIndexOf("/");
+				String reqKey = url.substring(idx + 1);
+
+				JSONObject jsonObject = parent;
+				JSONObject requestBody = null;
+
+				if (parent.getJSONObject("components").getJSONObject("schemas").getJSONObject(reqKey)
+						.has("properties")) {
+					requestBody = parent.getJSONObject("components").getJSONObject("schemas").getJSONObject(reqKey)
+							.getJSONObject("properties");
+
+					Iterator<String> reqkeys = requestBody.keys();
+
+					while (reqkeys.hasNext()) {
+						String key = reqkeys.next();
+						JSONObject req = requestBody.getJSONObject(key);
+
+						request r = new request();
+
+						r.setName(key);
+
+						if (req.has("type")) {
+							r.setType(req.getString("type"));
+						}
+						if (req.has("nullable")) {
+							r.setNullable(req.getBoolean("nullable"));
+						}
+
+						arr.add(r);
+					}
+
+				}
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+
+		return arr;
+	}
+
+	public static void main(String[] args) {
+		setJsonObject();
+		fillTags();
+		System.out.println("Hi");
+		getPathsData();
+		System.out.println(mapMaster.size()
+				+ "==============================================================================================================");
+		// System.out.println(mapMaster);
+		/*
+		 * for (Map.Entry<String, ArrayList<xmlHelper>> entry :
+		 * mapMaster.entrySet()) {
+		 * 
+		 * ArrayList<xmlHelper> t = entry.getValue();
+		 * System.out.println(t.size()); System.out.println("Key = " +
+		 * entry.getKey()); for (xmlHelper h : t) {
+		 * System.out.println(h.getMethod() + "=" + h.getPath());
+		 * ArrayList<parameter> params = h.getParameters(); ArrayList<request>
+		 * reqs = h.getRequest(); for (int i = 0; i < reqs.size(); i++) {
+		 * System.out.print("****" + reqs.get(i).getName() + "****"); }
+		 * 
+		 * }
+		 */
+		/*
+		 * for(parameter p : params){
+		 * System.out.print(p.getName()+"***"+p.getType()+"***"+p.
+		 * getReadOnly()+"=="+p.getRequired()); System.out.println(
+		 * "-------------------------------------------------------------" ); }
+		 * ArrayList<String> res = h.getResponse(); for(String re : res){
+		 * System.out.print(re+"->"); } }/
+		 * System.out.println("==================================");
+		 * 
+		 * 
+		 * 
+		 * // System.out.println(mapMethod); /* System.out.println(mapMaster);
+		 * for (Map.Entry<String, ArrayList<Helper>> entry :
+		 * mapMaster.entrySet()) { ArrayList<Helper> t = entry.getValue();
+		 * 
+		 * System.out.println("Key = " + entry.getKey()); for (Helper h : t) {
+		 * System.out.println(h.getMethod() + " = " + h.getPath()); }
+		 * System.out.println("=================================="); }
+		 */
+	}
+
+	public static JSONObject setJsonObject() {
+		JSONObject jsonObject = null;
+		try {
+			String loc = new String("/C:/Users/pavpatil/Desktop/API/openapi.json"); // test
+																					// data
+			File file = new File(loc);
+			String content = new String(Files.readAllBytes(Paths.get(file.toURI())));
+			jsonObject = new JSONObject(content);
+		} catch (JSONException e) {
+			System.out.print(e);
+		} catch (IOException e) {
+			System.out.print(e);
+		}
+		parent = jsonObject;
+		return jsonObject;
+	}
+
+	public static void fillTags() {
+		try {
+
+			JSONObject jsonObject = parent;
+			JSONArray Tags = (JSONArray) jsonObject.get("tags");
+
+			for (int i = 0; i < Tags.length(); i++) {
+				JSONObject objectInArray = Tags.getJSONObject(i);
+				String tagDesc = "";
+				String tagName = "";
+
+				if (objectInArray.has("name"))
+					tagName = objectInArray.getString("name");
+
+				if (objectInArray.has("description"))
+					tagDesc = objectInArray.getString("description");
+
+				tags_info t = new tags_info();
+				t.setTagName(tagName);
+				t.setTagDesc(tagDesc);
+
+				mapDesc.put(tagName, tagDesc);
+
+				ArrayList<xmlHelper> h = new ArrayList<>();
+				mapMaster.put(tagName, h);
+			}
+
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+	}
+
+	public static boolean isMethod(String key) {
+		if (key.equals("get") || key.equals("post") || key.equals("delete") || key.equals("patch")
+				|| key.equals("update"))
+			return true;
+		return false;
+	}
+
+	public static boolean isRequestBody(String key) {
+		if (key.equals("requestBody"))
+			return true;
+		return false;
+	}
+
+	public static boolean isResponseBody(String key) {
+		if (key.equals("responses"))
+			return true;
+		return false;
+	}
+
+	public static boolean isParameter(String key) {
+		if (key.equals("parameters"))
+			return true;
+		return false;
+	}
+	/*
+	 * if (url.equals(
+	 * "#/components/requestBodies/jointVentureAssignmentRules-projectValueSets-item-post-request")
+	 * || url.equals(
+	 * "#/components/requestBodies/jointVentureAssignmentRules-projectValueSets-item-patch-request"
+	 * )) {
+	 */
+
+	public static ArrayList<parameter> extractParameters(JSONArray parameterArray) {
+		ArrayList<parameter> arr = new ArrayList<>();
+		for (int i = 0; i < parameterArray.length(); i++) {
+			try {
+				JSONObject parameter = parameterArray.getJSONObject(i);
+				String type = parameter.getString("in");
+
+				if (type == "path") {
+					parameter p = new parameter();
+					if (parameter.has("name"))
+						p.setName(parameter.getString("name"));
+
+					if (parameter.has("required"))
+						p.setRequired(parameter.getBoolean("required"));
+
+					if (parameter.has("schema")) {
+						JSONObject fields = parameter.getJSONObject("schema");
+						if (fields.has("type"))
+							p.setType(fields.getString("type"));
+						if (fields.has("readOnly"))
+							p.setReadOnly(fields.getBoolean("readOnly"));
+					}
+					// p.setRequired(Boolean.valueOf(parameter.getString(("required"))));
+					arr.add(p);
+				}
+
+			} catch (JSONException e) {
+				System.out.print(e);
+			}
+
+		}
+		return arr;
+	}
+
+	// to be worked on
+	/*
+	 * public static ArrayList<response> get(JSONObject parnt,boolean isParent)
+	 */ {
+		/*
+		 * JSONObject componentObj = null; JSONObject schemaObj = null;
+		 * JSONObject propObj = null; JSONObject props = null; JSONObject items
+		 * = null; String schemaPath=""; if(isParent==false) items =
+		 * parnt.getJSONObject("items"); else items = parnt;
+		 * 
+		 * if (items.has("$ref")){ schemaPath = items.getString("$ref"); } int
+		 * idx = schemaPath.lastIndexOf("/"); schemaPath =
+		 * schemaPath.substring(idx + 1, schemaPath.length());
+		 * 
+		 * 
+		 * 
+		 * schemaObj = componentObj.getJSONObject("schemas");
+		 * 
+		 * if (parent.has("components")) { componentObj =
+		 * parent.getJSONObject("components");
+		 * 
+		 * if (componentObj.has("schemas")) { schemaObj =
+		 * componentObj.getJSONObject("schemas");
+		 * 
+		 * if (schemaObj.has(schemaPath)) { propObj =
+		 * schemaObj.getJSONObject(schemaPath); Iterator<String> itr =
+		 * propObj.keys(); while (itr.hasNext()) { String key = itr.next(); if
+		 * (key.equals("properties")) { props = propObj.getJSONObject(key);
+		 * Iterator<String> citr = props.keys(); while (citr.hasNext()) { String
+		 * ckey = citr.next(); response res = new response(); JSONObject
+		 * propsType = props.getJSONObject(ckey); res.setName(ckey); if
+		 * (propsType.has("type")) {
+		 * 
+		 * String type = propsType.getString("type"); if (type.equals("array"))
+		 * { System.out.println(ckey + "=="); res.setType("anyType");
+		 * ArrayList<response> child = get(propsType,false);
+		 * res.setChild(child); } else { res.setType(type); } }
+		 * 
+		 * JSONObject propsType = props.get(ckey); if (props.get(ckey)) {
+		 * res.setType(props.getString("type")); }
+		 * 
+		 * // res.setType(type); response.add(res); }
+		 * 
+		 * }
+		 * 
+		 * } } } }
+		 */}
+
+	public static ArrayList<response> getChilds(JSONObject parnt, boolean isParent) {
+		/*
+		 * try {
+		 * 
+		 * //String items = parent.getString("items"); ArrayList<response> res =
+		 * new ArrayList<>(); String schemaPath=""; JSONObject child=null;
+		 * JSONObject schemaObj=null; JSONObject items = null;
+		 * if(isParent==false) items = parnt.getJSONObject("items"); else
+		 * items=parnt;
+		 * 
+		 * if (items.has("$ref")){ schemaPath = items.getString("$ref"); } int
+		 * idx = schemaPath.lastIndexOf("/"); schemaPath =
+		 * schemaPath.substring(idx + 1, schemaPath.length());
+		 * 
+		 * schemaObj = componentObj.getJSONObject("schemas"); //object type
+		 * response resp = new response(); resp.setName(schemaPath);
+		 * if(resp.has("type")){
+		 * 
+		 * String type = propsType.getString("type")
+		 * 
+		 * res.setType(type);}
+		 * 
+		 * if (parent.has("properties")) { child =
+		 * parent.getJSONObject("properties"); Iterator<String> citr =
+		 * child.keys(); while (citr.hasNext()) { String ckey = citr.next();
+		 * response res = new response(); JSONObject propsType =
+		 * child.getJSONObject(ckey); res.setName(ckey);
+		 * if(propsType.has("type")){ if(type.equals("array")){
+		 * System.out.println(ckey+"=="); res.setType("anyType");
+		 * ArrayList<response> childList = getChilds(propsType);
+		 * res.setChild(childList); } }
+		 * 
+		 * } }
+		 * 
+		 * } catch (JSONException e) { // TODO Auto-generated catch block
+		 * e.printStackTrace(); } return null;
+		 */return null;
+	}
+
+	public static ArrayList<response> test(JSONObject obj) {
+
+		String schemaPath = "";
+		ArrayList<response> collect = new ArrayList<>();
+		// JSONObject parent = parent;
+		JSONObject componentObj = null;
+		JSONObject schemaObj = null;
+		JSONObject propObj = null;
+		JSONObject props = null;
+		if (obj.has("properties")) {
+			try {
+				props = obj.getJSONObject("properties");
+				Iterator<String> citr = props.keys();
+				while (citr.hasNext()) {
+
+					String ckey = citr.next();
+					response res = new response();
+					JSONObject propsType = props.getJSONObject(ckey);
+					res.setName(ckey);
+					if (propsType.has("type")) {
+
+						String type = propsType.getString("type");
+						if (type.equals("array") || type.equals("object")) {
+							// System.out.println(ckey + "==");
+							res.setType("anyType");
+							ArrayList<response> child = test(propsType);
+							// ArrayList<response> child =
+							// getChilds(propsType);
+							res.setChild(child);
+						} else {
+							res.setType(type);
+						}
+					}
+					collect.add(res);
+				}
+			} catch (Exception ex) {
+
+			}
+
+		} else {
+			try {
+				if (obj.has("items")) {
+					JSONObject items = obj.getJSONObject("items");
+					if (items.has("$ref")) {
+						schemaPath = items.getString("$ref");
+					}
+				}
+				int idx = schemaPath.lastIndexOf("/");
+				schemaPath = schemaPath.substring(idx + 1, schemaPath.length());
+
+				if (parent.has("components")) {
+					componentObj = parent.getJSONObject("components");
+
+					if (componentObj.has("schemas")) {
+						schemaObj = componentObj.getJSONObject("schemas");
+
+						if (schemaObj.has(schemaPath)) {
+							propObj = schemaObj.getJSONObject(schemaPath);
+							if (schemaObj.has(schemaPath)) {
+								propObj = schemaObj.getJSONObject(schemaPath);
+								Iterator<String> itr = propObj.keys();
+								while (itr.hasNext()) {
+									String key = itr.next();
+									if (key.equals("properties")) {
+										props = propObj.getJSONObject(key);
+										Iterator<String> citr = props.keys();
+										while (citr.hasNext()) {
+
+											String ckey = citr.next();
+											response res = new response();
+											JSONObject propsType = props.getJSONObject(ckey);
+											res.setName(ckey);
+											if (propsType.has("type")) {
+
+												String type = propsType.getString("type");
+												if (type.equals("array") || type.equals("object")) {
+													// System.out.println(ckey +
+													// "==");
+													res.setType("anyType");
+													ArrayList<response> child = test(propsType);
+													// printChild(child,0);
+													// ArrayList<response>
+													// child
+													// =
+													// getChilds(propsType);
+													res.setChild(child);
+												} else {
+													res.setType(type);
+												}
+											}
+											collect.add(res);
+										}
+									}
+								}
+
+							}
+						}
+					}
+				}
+
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		return collect;
+	}
+
+	public static void printChild(ArrayList<response> res, int cnt) {
+		if (res.size() > 0) {
+			String space = "";
+			int temp = cnt;
+			while (temp >= 0) {
+				space = space + " ";
+				temp--;
+			}
+
+			for (response ele : res) {
+				/*
+				 * if(ele.getType().equals("anyType")){
+				 * System.out.print(space+ele.getName()); ArrayList<response>
+				 * child = ele.getChild(); System.out.println("");
+				 * printChild(child,cnt+1); }
+				 */
+				// else{
+				System.out.println(space + ele.getName() + "---->" + ele.getType());
+				if (ele.getType() == "anyType") {
+					printChild(ele.getChild(), cnt + 3);
+				}
+				// System.out.println("");
+				// }
+
+			}
+		}
+	}
+
+	public static ArrayList<response> extractResponse(JSONObject obj) {
+		ArrayList<response> response = new ArrayList<>();
+		try {
+			JSONObject contentObj = null;
+			String schemaPath = "";
+			if (obj.has("responses")) {
+				contentObj = obj.getJSONObject("responses");
+				if (contentObj.has("default")) {
+					contentObj = contentObj.getJSONObject("default");
+					if (contentObj.has("content")) {
+						contentObj = contentObj.getJSONObject("content");
+						if (contentObj.has("application/json")) {
+							contentObj = contentObj.getJSONObject("application/json");
+							if (contentObj.has("schema")) {
+								// contentObj =
+								contentObj = contentObj.getJSONObject("schema");
+								if (contentObj.has("$ref"))
+									schemaPath = contentObj.getString("$ref");
+							}
+						}
+					}
+				}
+			}
+
+			int idx = schemaPath.lastIndexOf("/");
+			schemaPath = schemaPath.substring(idx + 1, schemaPath.length());
+			// pptest
+			if (schemaPath.equals("jointVentureGLDistributions-item-response")) {
+
+				JSONObject componentObj = null;
+				JSONObject schemaObj = null;
+				JSONObject propObj = null;
+				JSONObject props = null;
+
+				if (parent.has("components")) {
+					componentObj = parent.getJSONObject("components");
+
+					if (componentObj.has("schemas")) {
+						schemaObj = componentObj.getJSONObject("schemas");
+
+						if (schemaObj.has(schemaPath)) {
+							propObj = schemaObj.getJSONObject(schemaPath);
+							Iterator<String> itr = propObj.keys();
+							while (itr.hasNext()) {
+								String key = itr.next();
+								if (key.equals("properties")) {
+									props = propObj.getJSONObject(key);
+									Iterator<String> citr = props.keys();
+									while (citr.hasNext()) {
+										String ckey = citr.next();
+										response res = new response();
+										JSONObject propsType = props.getJSONObject(ckey);
+										res.setName(ckey);
+										if (propsType.has("type")) {
+
+											String type = propsType.getString("type");
+											if (type.equals("array")) {
+												// System.out.println(ckey +
+												// "==");
+												res.setType("anyType");
+												ArrayList<response> child = test(propsType);
+												// ArrayList<response> child =
+												// getChilds(propsType);
+												res.setChild(child);
+											} else {
+												res.setType(type);
+											}
+										}
+										/*
+										 * JSONObject propsType =
+										 * props.get(ckey); if (props.get(ckey))
+										 * {
+										 * res.setType(props.getString("type"));
+										 * }
+										 */
+										// res.setType(type);
+										response.add(res);
+									}
+
+								}
+
+							}
+						}
+					}
+				}
+			}
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+
+		return response;
+	}
+
+	public static void getPathsData() {
+		try {
+
+			JSONObject jsonObject = parent;
+			// if (jsonObject.has(key)) {
+			JSONObject pathObject = jsonObject.getJSONObject("paths");
+			Iterator<String> pathkeys = pathObject.keys();
+
+			int cnt = 0;
+			while (pathkeys.hasNext()) {
+				String key = pathkeys.next();
+
+				ArrayList<xmlHelper> a = new ArrayList<>();
+				if (pathObject.has(key)) {
+					JSONObject singlePathObject = pathObject.getJSONObject(key);
+					Iterator<String> singlepathkeys = singlePathObject.keys();
+					ArrayList<String> arr = new ArrayList<>();
+
+					while (singlepathkeys.hasNext()) {
+						String ckey = singlepathkeys.next();
+						if (singlePathObject.has(ckey)) {
+
+							if (isMethod(ckey)) {
+
+								JSONArray methodArray = singlePathObject.getJSONObject(ckey).getJSONArray("tags");
+								String tagName = methodArray.getString(0);
+								xmlHelper xml = new xmlHelper();
+								xml.setPath(key);
+								xml.setMethod(ckey);
+
+								if (singlePathObject.getJSONObject(ckey).has("parameters")) {
+									JSONArray parameterArray = singlePathObject.getJSONObject(ckey)
+											.getJSONArray("parameters");
+									// ArrayList<parameter> pm =
+									// extractParameters(parameterArray);
+									// xml.setParameters(pm);
+								}
+								if (singlePathObject.getJSONObject(ckey).has("requestBody")) {
+									// System.out.print(ckey + " ");
+
+									JSONObject requestBody = singlePathObject.getJSONObject(ckey)
+											.getJSONObject("requestBody");
+									ArrayList<request> rb = new ArrayList<>();
+									// rb = extractRequest(requestBody);
+
+									System.out.println();
+									xml.setRequest(rb);
+								}
+								if (singlePathObject.getJSONObject(ckey).has("responses")) {
+									JSONObject parameterArray = singlePathObject.getJSONObject(ckey)
+											.getJSONObject("responses");
+									ArrayList<response> res = extractResponse(singlePathObject.getJSONObject(ckey));
+									printChild(res, 2);
+									xml.setResponse(res);
+								}
+								// a.add(xml);
+								if (mapMaster.containsKey(tagName)) {
+									// mapMethod.get(tagName).add(key);
+
+									mapMaster.get(tagName).add(xml);
+
+								}
+							}
+
+						}
+					}
+				}
+
+				cnt++;
+
+			}
+			// System.out.println(pathObject);
+
+			// System.out.println(cnt);
+			// JSONArray Tags = (JSONArray) jsonObject.get("tags");
+		} catch (JSONException e) {
+			System.out.print(e);
+		}
+	}
+
+}
