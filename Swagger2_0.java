@@ -82,12 +82,13 @@ public class definitions {
 		return path.substring(idx+1);
 		
 	}
+	public static void fillParameters(String data){
+		
+	}
 	public static defStructure fillDefinitions(JSONObject defObj, String name,JSONObject defParent) throws JSONException {
 		defStructure parent = new defStructure();
 		parent.setName(name);
-		if(name.equals("CollectionProperties")){
-			System.out.println("Hi");
-		}
+		
 		String type = "";
 		if (defObj.has("type")) {
 			type = defObj.getString("type");
@@ -113,6 +114,25 @@ public class definitions {
 					child.setType(pType);
 					if(pType.equals("object") || pType.equals("array")){
 						if(ccprops.has("items")){
+							
+							
+							Object aObj = ccprops.get("items");
+							if (aObj instanceof  JSONArray) {
+								JSONArray items = ccprops.getJSONArray("items");
+								for (int i = 0; i < items.length(); i++) {
+									JSONObject objectInArray = items.getJSONObject(i);
+									/*JSONObject objectInArray = items.getJSONObject(i);
+									if(objectInArray.has("properties")){
+										JSONObject cchild = objectInArray.getJSONObject("properties");
+									}*/
+									defStructure cc = fillDefinitions(objectInArray,child.name+"items"+i,defParent);
+									child.childs.add(cc);
+								}
+							}
+							else if(aObj instanceof JSONObject){
+								
+							
+							
 							JSONObject items = ccprops.getJSONObject("items");
 							if(items.has("$ref")){
 								String schemaPath = items.getString("$ref");
@@ -120,6 +140,7 @@ public class definitions {
 								JSONObject cc = defParent.getJSONObject(schema);
 								defStructure c = fillDefinitions(cc,schema,defParent);
 								child.childs.add(c);
+							}
 							}
 						}
 					}
@@ -156,12 +177,13 @@ public class definitions {
 					JSONObject cc = defParent.getJSONObject(schema);
 					cchild = fillDefinitions(cc,schema,defParent);
 					child.childs.add(cchild);
+					
 				}
 				else if(objectInArray.has("properties")){
 					JSONObject props = objectInArray.getJSONObject("properties");
 					
 					defStructure allOfchild = new defStructure();
-					allOfchild.setName(parent.name+"allOf"+i);
+					allOfchild.setName(parent.name+child.name+i);
 					String dtype = objectInArray.has("type")?objectInArray.getString("type"):"object";
 					allOfchild.setType(dtype);
 					
@@ -194,13 +216,15 @@ public class definitions {
 								
 							}*/
 							allOfchild.childs.add(cchild);
-							child.childs.add(allOfchild);
+							/*child.childs.add(allOfchild);*/
 						}
 					}
-					parent.childs.add(child);
+					child.childs.add(allOfchild);
+					//parent.childs.add(child);
 				}
+				
 			}
-			
+			parent.childs.add(child);
 			
 		}
 		return parent;
@@ -214,14 +238,21 @@ public class definitions {
 		while (defKeys.hasNext()) {
 			String key = defKeys.next();
 			if (defObject.has(key)) {
-				if(key.equals("commonLookups") || key.equals("auditUpdateStatusOnError")){
+				//if(key.equals("commonLookups") || key.equals("auditUpdateStatusOnError")){
 				JSONObject singleDefObject = defObject.getJSONObject(key);
+				/*if(key.equals("setupTaskCSVImports-SetupTaskCSVImportProcess-SetupTaskCSVImportProcessResult-item-response")){
+				System.out.print("=-----====");
+				}*/
 				defStructure defele = fillDefinitions(singleDefObject, key ,defObject);
 				def.add(defele);
-				}
+				//if(key.equals("setupTaskCSVImports-SetupTaskCSVImportProcess-SetupTaskCSVImportProcessResult-item-response")){
+					Print(defele,"");
+				//}
+				System.out.println("=============");
+				//}
 			}
 		}
-		Print(def.get(0),"");
+		//Print(def.get(0),"");
 	}
 
 	public static void getPathsData() {
@@ -317,7 +348,7 @@ public class definitions {
 	public static void main(String[] args) throws JSONException {
 		setJsonObject();
 		fillTags();
-		System.out.println("Hi");
+	
 		getPathsData();
 		fillDefinitionsHelper();
 	}
