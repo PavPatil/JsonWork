@@ -24,7 +24,7 @@ public class definitions {
 	public static JSONObject setJsonObject() {
 		JSONObject jsonObject = null;
 		try {
-			String loc = new String("/C:/Users/pavpatil/Desktop/OERP/d/Common_Features.json"); // test
+			String loc = new String("/C:/Users/pavpatil/Desktop/OERP/d/Enterprise_Data_Management.json"); // test
 			// data
 			File file = new File(loc);
 			String content = new String(Files.readAllBytes(Paths.get(file.toURI())));
@@ -76,14 +76,13 @@ public class definitions {
 			return true;
 		return false;
 	}
-	
+
 	public static boolean isParameters(String key) {
 		if (key.equals("parameters"))
 			return true;
 		return false;
 	}
 
-	
 	public static ArrayList<defStructure> def = new ArrayList<>();
 	public static ArrayList<defStructure> par = new ArrayList<>();
 
@@ -92,6 +91,7 @@ public class definitions {
 		return path.substring(idx + 1);
 
 	}
+
 	public static void fillResponseHelper() throws JSONException {
 		JSONObject jsonObject = parent;
 
@@ -102,14 +102,15 @@ public class definitions {
 			String key = resKeys.next();
 			if (resObject.has(key)) {
 				JSONObject singleDefObject = resObject.getJSONObject(key);
-				//System.out.println(key);
-				defStructure parele = fillResponses(singleDefObject, key, resObject,defObject);
+				// System.out.println(key);
+				defStructure parele = fillResponses(singleDefObject, key, resObject, defObject);
 				par.add(parele);
 				Print(parele, "");
 
 			}
 		}
 	}
+
 	public static defStructure fillResponses(JSONObject resObj, String name, JSONObject parParent, JSONObject defParent)
 			throws JSONException {
 		defStructure parent = null;
@@ -117,27 +118,22 @@ public class definitions {
 			resObj = resObj.getJSONObject("schema");
 			parent = fillDefinitions(resObj, name, defParent);
 		}
-		/*defStructure parent = new defStructure();
-		parent.setName(name);
-		String type = "";
-		type = resObj.has("type") ? resObj.getString("type") : "object";
-		parent.setType(type);
-		if (resObj.has("schema")) {
-			JSONObject schemaObj = resObj.getJSONObject("schema");
-			
-			if (schemaObj.has("$ref")) {
-				defStructure child = new defStructure();
-				String schemaPath = schemaObj.getString("$ref");
-				String schema = getSchema(schemaPath);
-				JSONObject cc = defParent.getJSONObject(schema);
-				child = fillDefinitions(cc, schema, parParent);
-				parent.childs.add(child);
-			}
-		}*/
+		/*
+		 * defStructure parent = new defStructure(); parent.setName(name);
+		 * String type = ""; type = resObj.has("type") ?
+		 * resObj.getString("type") : "object"; parent.setType(type); if
+		 * (resObj.has("schema")) { JSONObject schemaObj =
+		 * resObj.getJSONObject("schema");
+		 * 
+		 * if (schemaObj.has("$ref")) { defStructure child = new defStructure();
+		 * String schemaPath = schemaObj.getString("$ref"); String schema =
+		 * getSchema(schemaPath); JSONObject cc =
+		 * defParent.getJSONObject(schema); child = fillDefinitions(cc, schema,
+		 * parParent); parent.childs.add(child); } }
+		 */
 		return parent;
 	}
-	
-	
+
 	public static defStructure fillParameters(JSONObject parObj, String name, JSONObject parParent)
 			throws JSONException {
 		defStructure parent = new defStructure();
@@ -164,13 +160,13 @@ public class definitions {
 						parent.childs.add(child);
 					}
 				}
-			} else if (val.equals("query") && isQueryAdded==false) {
+			} else if (val.equals("query") && isQueryAdded == false) {
 				// hasQuery = true;
 				defStructure child = new defStructure();
 				child.setName("Query");
 				child.setType("String");
 				parent.childs.add(child);
-				isQueryAdded  = true;
+				isQueryAdded = true;
 			}
 		}
 		return parent;
@@ -374,82 +370,125 @@ public class definitions {
 		}
 		// Print(def.get(0),"");
 	}
+
 	public static boolean isQueryAdded = false;
-	public static ArrayList<defStructure> getParameters(JSONArray parameterArray) throws JSONException{
-		ArrayList<defStructure> arr  = new ArrayList<>();
-		for(int i = 0;i<parameterArray.length();i++){
+
+	public static ArrayList<defStructure> getParameters(JSONArray parameterArray) throws JSONException {
+		ArrayList<defStructure> arr = new ArrayList<>();
+		for (int i = 0; i < parameterArray.length(); i++) {
 			JSONObject parObject = parameterArray.getJSONObject(i);
-			if(parObject.has("schema")){
-				int si=1;
+			if (parObject.has("schema")) {
+				int si = 1;
 				parObject = parObject.getJSONObject("schema");
-				if(parObject.has("$ref")){
+				if (parObject.has("$ref")) {
 					String schema = parObject.getString("$ref");
-					if(schema.contains("#/definitions")){
+					if (schema.contains("#/definitions")) {
 						schema = getSchema(schema);
 						JSONObject jsonObject = parent;
 						JSONObject defObject = jsonObject.getJSONObject("definitions");
 						JSONObject target = defObject.getJSONObject(schema);
-						
-						defStructure ele = fillDefinitions(target,schema,defObject);
+
+						defStructure ele = fillDefinitions(target, schema, defObject);
 						arr.add(ele);
 					}
 				}
-			}
-			else if(parObject.has("$ref")){
+			} else if (parObject.has("$ref")) {
 				String schema = parObject.getString("$ref");
-				if(schema.contains("#/parameters")){
+				if (schema.contains("#/parameters")) {
 					schema = getSchema(schema);
 					JSONObject jsonObject = parent;
 					JSONObject paramObject = jsonObject.getJSONObject("parameters");
 					JSONObject target = paramObject.getJSONObject(schema);
-					
-					defStructure ele = fillParametersHelperSpecific(target,schema,paramObject);
+
+					defStructure ele = fillParametersHelperSpecific(target, schema, paramObject);
 					arr.add(ele);
 				}
-			}
-			else{
+			} else {
 				String val = parObject.getString("in");
-				if(val.equals("path")){
+				if (val.equals("path")) {
 					defStructure simpleDef = new defStructure();
-					if(parObject.has("name")){
+					if (parObject.has("name")) {
 						simpleDef.setName(parObject.getString("name"));
 					}
-					if(parObject.has("type")){
+					if (parObject.has("type")) {
 						simpleDef.setType(parObject.getString("type"));
 					}
 					arr.add(simpleDef);
-				}
-				else if (val.equals("query")){
-					if(isQueryAdded==false){
+				} else if (val.equals("query")) {
+					if (isQueryAdded == false) {
 						defStructure simpleDef = new defStructure();
 						simpleDef.setName("Query");
 						simpleDef.setType("String");
 						arr.add(simpleDef);
-						isQueryAdded  = true;
+						isQueryAdded = true;
 					}
 				}
-				
+
 			}
 		}
 		return arr;
 	}
-	public static defStructure fillParametersHelperSpecific(JSONObject paramObj,String name,JSONObject paramParent) throws JSONException {
-		JSONObject jsonObject = parent; 
+
+	public static defStructure fillParametersHelperSpecific(JSONObject paramObj, String name, JSONObject paramParent)
+			throws JSONException {
+		JSONObject jsonObject = parent;
 		JSONObject singleDefObject = paramObj;
 		defStructure parele = null;
 		if (singleDefObject.has("in")) {
 
 			String val = singleDefObject.getString("in");
-			//if (val.equals("path") || val.equals("query")) {
-				parele = fillParameters(singleDefObject, name, paramParent);
-				//par.add(parele);
-				//Print(parele, "");
-			//}
+			// if (val.equals("path") || val.equals("query")) {
+			parele = fillParameters(singleDefObject, name, paramParent);
+			// par.add(parele);
+			// Print(parele, "");
+			// }
 		}
 		return parele;
-	
+
 	}
-	
+
+	// working
+	public static defStructure fillResponseHelperSpecific(JSONObject target, String schema, JSONObject resObj)
+			throws JSONException {
+		JSONObject jsonObject = parent;
+
+		JSONObject resObject = jsonObject.getJSONObject("responses");
+		JSONObject defObject = jsonObject.getJSONObject("definitions");
+
+		defStructure parele = fillResponses(target, schema, resObj, defObject);
+		return parele;
+	}
+
+	public static defStructure getResponse(JSONObject responseObj) throws JSONException {
+		defStructure response = new defStructure();
+		int iy=1;
+		if (responseObj.has("default")) {
+			responseObj = responseObj.getJSONObject("default");
+			
+				if (responseObj.has("$ref")) {
+					String schemaPath = responseObj.getString("$ref");
+					if (schemaPath.contains("#/responses")) {
+						String schema = getSchema(schemaPath);
+						JSONObject jsonObject = parent;
+						JSONObject resObject = jsonObject.getJSONObject("responses");
+						JSONObject target = resObject.getJSONObject(schema);
+
+						response = fillResponseHelperSpecific(target, schema, resObject);
+					}
+					else if (schemaPath.contains("#/definitions")) {
+						String schema = getSchema(schemaPath);
+						JSONObject jsonObject = parent;
+						JSONObject resObject = jsonObject.getJSONObject("definitions");
+						JSONObject target = resObject.getJSONObject(schema);
+
+						response = fillDefinitions(target, schema, resObject);
+					}
+
+				}
+			}
+		return response;
+	}
+
 	public static void getPathsData() {
 		try {
 			JSONObject jsonObject = parent;
@@ -465,13 +504,14 @@ public class definitions {
 				if (pathObject.has(key)) {
 					JSONObject singlePathObject = pathObject.getJSONObject(key);
 					ArrayList<defStructure> commonParameters = new ArrayList<>();
-					if(singlePathObject.has("parameters")){
+					if (singlePathObject.has("parameters")) {
 						JSONArray parameterArray = singlePathObject.getJSONArray("parameters");
 						commonParameters = getParameters(parameterArray);
-						/*for(defStructure ele : commonParameters){
-							Print(ele,"");
-						}*/
-					} 
+						/*
+						 * for(defStructure ele : commonParameters){
+						 * Print(ele,""); }
+						 */
+					}
 					Iterator<String> singlepathkeys = singlePathObject.keys();
 					ArrayList<String> arr = new ArrayList<>();
 
@@ -492,20 +532,21 @@ public class definitions {
 									// ArrayList<parameter> pm =
 									// extractParameters(parameterArray);
 									// xml.setParameters(pm);
-									//if(key.equals("/fscmRestApi/resources/11.13.18.05/persons/{Personid}")){
-										ArrayList<defStructure> ans = getParameters(parameterArray);
-										if(commonParameters.size()>0){
-											for(defStructure ele:commonParameters){
-												ans.add(ele);
-											}
+									// if(key.equals("/fscmRestApi/resources/11.13.18.05/persons/{Personid}")){
+									ArrayList<defStructure> ans = getParameters(parameterArray);
+									if (commonParameters.size() > 0) {
+										for (defStructure ele : commonParameters) {
+											ans.add(ele);
 										}
-										
-										for(defStructure ele : ans){
-											Print(ele,"");
-											
-										}
-										System.out.println("==============================================================");
-									//}
+									}
+
+									for (defStructure ele : ans) {
+										Print(ele, "");
+
+									}
+									System.out
+											.println("==============================================================");
+									// }
 								}
 								if (singlePathObject.getJSONObject(ckey).has("requestBody")) {
 									// System.out.print(ckey + " ");
@@ -519,12 +560,15 @@ public class definitions {
 									xml.setRequest(rb);
 								}
 								if (singlePathObject.getJSONObject(ckey).has("responses")) {
-									JSONObject parameterArray = singlePathObject.getJSONObject(ckey)
+									JSONObject responseObject = singlePathObject.getJSONObject(ckey)
 											.getJSONObject("responses");
+									defStructure response = getResponse(responseObject);
 									// ArrayList<response> res =
 									// extractResponse(singlePathObject.getJSONObject(ckey));
 									// printChild(res, 2);
 									// xml.setResponse(res);
+									System.out.println(key+"============"+ckey);
+									Print(response, "");
 								}
 								// a.add(xml);
 								if (mapMaster.containsKey(tagName)) {
@@ -538,7 +582,8 @@ public class definitions {
 						}
 					}
 				}
-				System.out.println("=========================------------------Method End Here-------------------------------=====================================");
+				System.out.println(
+						"=========================------------------Method End Here-------------------------------=====================================");
 				cnt++;
 
 			}
@@ -569,7 +614,7 @@ public class definitions {
 
 		getPathsData();
 		// fillDefinitionsHelper();
-		//fillParametersHelper();
-		//fillResponseHelper();
+		// fillParametersHelper();
+		// fillResponseHelper();
 	}
 }
