@@ -76,7 +76,14 @@ public class definitions {
 			return true;
 		return false;
 	}
+	
+	public static boolean isParameters(String key) {
+		if (key.equals("parameters"))
+			return true;
+		return false;
+	}
 
+	
 	public static ArrayList<defStructure> def = new ArrayList<>();
 	public static ArrayList<defStructure> par = new ArrayList<>();
 
@@ -157,12 +164,13 @@ public class definitions {
 						parent.childs.add(child);
 					}
 				}
-			} else if (val.equals("query")) {
+			} else if (val.equals("query") && isQueryAdded==false) {
 				// hasQuery = true;
 				defStructure child = new defStructure();
 				child.setName("Query");
 				child.setType("String");
 				parent.childs.add(child);
+				isQueryAdded  = true;
 			}
 		}
 		return parent;
@@ -366,36 +374,82 @@ public class definitions {
 		}
 		// Print(def.get(0),"");
 	}
-	public static void getParameters(JSONArray parameterArray) throws JSONException{
+	public static boolean isQueryAdded = false;
+	public static ArrayList<defStructure> getParameters(JSONArray parameterArray) throws JSONException{
+		ArrayList<defStructure> arr  = new ArrayList<>();
 		for(int i = 0;i<parameterArray.length();i++){
 			JSONObject parObject = parameterArray.getJSONObject(i);
-			if(parObject.has("$ref")){
+			if(parObject.has("schema")){
+				int si=1;
+				parObject = parObject.getJSONObject("schema");
+				if(parObject.has("$ref")){
+					String schema = parObject.getString("$ref");
+					if(schema.contains("#/definitions")){
+						schema = getSchema(schema);
+						JSONObject jsonObject = parent;
+						JSONObject defObject = jsonObject.getJSONObject("definitions");
+						JSONObject target = defObject.getJSONObject(schema);
+						
+						defStructure ele = fillDefinitions(target,schema,defObject);
+						arr.add(ele);
+					}
+				}
+			}
+			else if(parObject.has("$ref")){
 				String schema = parObject.getString("$ref");
 				if(schema.contains("#/parameters")){
 					schema = getSchema(schema);
 					JSONObject jsonObject = parent;
 					JSONObject paramObject = jsonObject.getJSONObject("parameters");
 					JSONObject target = paramObject.getJSONObject(schema);
-					fillParametersHelperSpecific(target,schema,paramObject);
+					
+					defStructure ele = fillParametersHelperSpecific(target,schema,paramObject);
+					arr.add(ele);
 				}
 			}
+			else{
+				String val = parObject.getString("in");
+				if(val.equals("path")){
+					defStructure simpleDef = new defStructure();
+					if(parObject.has("name")){
+						simpleDef.setName(parObject.getString("name"));
+					}
+					if(parObject.has("type")){
+						simpleDef.setType(parObject.getString("type"));
+					}
+					arr.add(simpleDef);
+				}
+				else if (val.equals("query")){
+					if(isQueryAdded==false){
+						defStructure simpleDef = new defStructure();
+						simpleDef.setName("Query");
+						simpleDef.setType("String");
+						arr.add(simpleDef);
+						isQueryAdded  = true;
+					}
+				}
+				
+			}
 		}
+		return arr;
 	}
-	public static void fillParametersHelperSpecific(JSONObject paramObj,String name,JSONObject paramParent) throws JSONException {
-		JSONObject jsonObject = parent;
+	public static defStructure fillParametersHelperSpecific(JSONObject paramObj,String name,JSONObject paramParent) throws JSONException {
+		JSONObject jsonObject = parent; 
 		JSONObject singleDefObject = paramObj;
+		defStructure parele = null;
 		if (singleDefObject.has("in")) {
 
 			String val = singleDefObject.getString("in");
-			if (val.equals("path") || val.equals("query")) {
-				defStructure parele = fillParameters(singleDefObject, name, paramParent);
+			//if (val.equals("path") || val.equals("query")) {
+				parele = fillParameters(singleDefObject, name, paramParent);
 				//par.add(parele);
-				Print(parele, "");
-			}
+				//Print(parele, "");
+			//}
 		}
-
+		return parele;
 	
 	}
+	
 	public static void getPathsData() {
 		try {
 			JSONObject jsonObject = parent;
@@ -410,6 +464,14 @@ public class definitions {
 				ArrayList<xmlHelper> a = new ArrayList<>();
 				if (pathObject.has(key)) {
 					JSONObject singlePathObject = pathObject.getJSONObject(key);
+					ArrayList<defStructure> commonParameters = new ArrayList<>();
+					if(singlePathObject.has("parameters")){
+						JSONArray parameterArray = singlePathObject.getJSONArray("parameters");
+						commonParameters = getParameters(parameterArray);
+						/*for(defStructure ele : commonParameters){
+							Print(ele,"");
+						}*/
+					} 
 					Iterator<String> singlepathkeys = singlePathObject.keys();
 					ArrayList<String> arr = new ArrayList<>();
 
@@ -430,7 +492,20 @@ public class definitions {
 									// ArrayList<parameter> pm =
 									// extractParameters(parameterArray);
 									// xml.setParameters(pm);
-									getParameters(parameterArray);
+									//if(key.equals("/fscmRestApi/resources/11.13.18.05/persons/{Personid}")){
+										ArrayList<defStructure> ans = getParameters(parameterArray);
+										if(commonParameters.size()>0){
+											for(defStructure ele:commonParameters){
+												ans.add(ele);
+											}
+										}
+										
+										for(defStructure ele : ans){
+											Print(ele,"");
+											
+										}
+										System.out.println("==============================================================");
+									//}
 								}
 								if (singlePathObject.getJSONObject(ckey).has("requestBody")) {
 									// System.out.print(ckey + " ");
@@ -463,7 +538,7 @@ public class definitions {
 						}
 					}
 				}
-
+				System.out.println("=========================------------------Method End Here-------------------------------=====================================");
 				cnt++;
 
 			}
